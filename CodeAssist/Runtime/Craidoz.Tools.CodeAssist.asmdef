@@ -1,0 +1,14 @@
+{
+  "name": "Craidoz.Tools.CodeAssist",
+  "rootNamespace": "Craidoz.Tools.CodeAssist",
+  "references": [],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

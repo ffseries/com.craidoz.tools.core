@@ -1,0 +1,59 @@
+# CraidoZ Tools Core
+
+Unity package that provides editor utilities and code-assist attributes.
+
+## Features
+- PlayerPref Management window (`CraidoZ Tools/PlayerPref Management`)
+  - Set / load / delete PlayerPrefs
+  - Type selection (bool, int, float, string)
+  - Type mismatch warning
+- ShowIf attributes (CodeAssist)
+  - Conditionally show fields in the Inspector based on another field
+  - Supports bool, int, float, string, and enum
+  - Multiple expected values
+  - Comparisons: equals, not equals, greater/less (int/float)
+
+## Installation
+Add this repo as a Unity package (Git URL) or copy into `Packages/`.
+
+## Usage
+
+### PlayerPref Management
+Open `CraidoZ Tools/PlayerPref Management` from the Unity menu.
+
+### ShowIf attributes
+Add the attribute to any serialized field.
+
+```csharp
+using Craidoz.Tools.CodeAssist;
+using UnityEngine;
+
+public class Example : MonoBehaviour
+{
+    public bool showAdvanced;
+    public int mode;
+    public float speed;
+
+    [ShowIf("showAdvanced")]
+    public int advancedValue;
+
+    [ShowIfNot("mode", 0)]
+    public string nonDefaultModeLabel;
+
+    [ShowIfGreater("speed", 2.5f)]
+    public float fastOnlyValue;
+}
+```
+
+Enum examples:
+```csharp
+[ShowIf("mode", nameof(Mode.Advanced))]
+public int advancedValue;
+
+[ShowIf("mode", (int)Mode.Advanced)]
+public int advancedValueByIndex;
+```
+
+## Notes
+- `ShowIf` compares against serialized fields. The compared field must be in the same object (or sibling field in a nested object).
+- `ShowIf` with enum names uses the enum label text, so `nameof(MyEnum.Value)` is recommended.

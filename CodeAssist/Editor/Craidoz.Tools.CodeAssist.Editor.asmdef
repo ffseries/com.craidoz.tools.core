@@ -1,0 +1,18 @@
+{
+  "name": "Craidoz.Tools.CodeAssist.Editor",
+  "rootNamespace": "Craidoz.Tools.CodeAssist.Editor",
+  "references": [
+    "Craidoz.Tools.CodeAssist"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

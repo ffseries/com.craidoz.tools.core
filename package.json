@@ -1,0 +1,10 @@
+{
+  "name": "com.craidoz.tools.core",
+  "version": "0.0.1",
+  "displayName": "CraidoZ Tools - Core",
+  "description": "Shared core utilities for CraidoZ Unity tools.",
+  "unity": "2022.3",
+  "author": {
+    "name": "CraidoZ"
+  }
+}
