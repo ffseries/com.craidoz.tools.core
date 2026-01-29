@@ -2,16 +2,21 @@
 
 Unity package that provides editor utilities and code-assist attributes.
 
+Version: 0.0.2
+
 ## Features
 - PlayerPref Management window (`CraidoZ Tools/PlayerPref Management`)
   - Set / load / delete PlayerPrefs
   - Type selection (bool, int, float, string)
   - Type mismatch warning
+- Prefab Unpack tools (`CraidoZ Tools/Prefab`)
+  - Unpack Selected
+  - Unpack Selected (Completely)
 - ShowIf attributes (CodeAssist)
   - Conditionally show fields in the Inspector based on another field
   - Supports bool, int, float, string, and enum
   - Multiple expected values
-  - Comparisons: equals, not equals, greater/less (int/float)
+  - Comparisons via attributes: ShowIf, ShowIfNot, ShowIfGreater/Less (int/float)
 
 ## Installation
 Add this repo as a Unity package (Git URL) or copy into `Packages/`.
@@ -20,6 +25,11 @@ Add this repo as a Unity package (Git URL) or copy into `Packages/`.
 
 ### PlayerPref Management
 Open `CraidoZ Tools/PlayerPref Management` from the Unity menu.
+
+### Prefab Unpack
+Menu:
+- `CraidoZ Tools/Prefab/Unpack Selected` (Ctrl+Alt+U)
+- `CraidoZ Tools/Prefab/Unpack Selected (Completely)` (Ctrl+Alt+Shift+U)
 
 ### ShowIf attributes
 Add the attribute to any serialized field.
