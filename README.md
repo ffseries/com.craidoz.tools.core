@@ -2,7 +2,7 @@
 
 Unity package that provides editor utilities and code-assist attributes.
 
-Version: 0.0.2
+Version: 0.0.3
 
 ## Features
 - PlayerPref Management window (`CraidoZ Tools/PlayerPref Management`)
@@ -12,6 +12,7 @@ Version: 0.0.2
 - Prefab Unpack tools (`CraidoZ Tools/Prefab`)
   - Unpack Selected
   - Unpack Selected (Completely)
+  - Unpack To New Prefab (window)
 - ShowIf attributes (CodeAssist)
   - Conditionally show fields in the Inspector based on another field
   - Supports bool, int, float, string, and enum
@@ -30,6 +31,11 @@ Open `CraidoZ Tools/PlayerPref Management` from the Unity menu.
 Menu:
 - `CraidoZ Tools/Prefab/Unpack Selected` (Ctrl+Alt+U)
 - `CraidoZ Tools/Prefab/Unpack Selected (Completely)` (Ctrl+Alt+Shift+U)
+- `CraidoZ Tools/Prefab/Unpack To New Prefab` (Window)
+
+Window notes:
+- You can drag multiple prefab/FBX assets from Project.
+- Prefix behavior: empty = keep original name. With one item, prefix replaces the name. With multiple items, prefix is added before the original name.
 
 ### ShowIf attributes
 Add the attribute to any serialized field.
