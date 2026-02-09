@@ -2,7 +2,7 @@
 
 Unity package that provides editor utilities and code-assist attributes.
 
-Version: 0.0.3
+Version: 0.0.4
 
 ## Features
 - PlayerPref Management window (`CraidoZ Tools/PlayerPref Management`)
@@ -73,3 +73,9 @@ public int advancedValueByIndex;
 ## Notes
 - `ShowIf` compares against serialized fields. The compared field must be in the same object (or sibling field in a nested object).
 - `ShowIf` with enum names uses the enum label text, so `nameof(MyEnum.Value)` is recommended.
+
+## Update Log
+- 0.0.4
+  - Added Hierarchy tools: Find Components, Find Missing Scripts (with remove), Find Missing References (table view).
+  - Added Prefab Unpack window with multi-asset drag & drop.
+  - Improved Missing References UI layout and table formatting.
