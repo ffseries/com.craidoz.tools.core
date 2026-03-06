@@ -13,6 +13,10 @@ Version: 0.0.4
   - Unpack Selected
   - Unpack Selected (Completely)
   - Unpack To New Prefab (window)
+- Scene Grid tool (`CraidoZ Tools/Scene Grid`)
+  - Toggle grid in Scene View (XY/XZ/YZ plane)
+  - Show/Hide Scene View button from CraidoZ menu
+  - Configure cell size, range, cell indices, line color, and text color
 - ShowIf attributes (CodeAssist)
   - Conditionally show fields in the Inspector based on another field
   - Supports bool, int, float, string, and enum
@@ -36,6 +40,16 @@ Menu:
 Window notes:
 - You can drag multiple prefab/FBX assets from Project.
 - Prefix behavior: empty = keep original name. With one item, prefix replaces the name. With multiple items, prefix is added before the original name.
+
+### Scene Grid
+Menu:
+- `CraidoZ Tools/Scene Grid/Enable Grid`
+- `CraidoZ Tools/Scene Grid/Show Scene View Button`
+- `CraidoZ Tools/Scene Grid/Settings`
+
+Scene View toolbar:
+- `Grid <Plane>` toggles grid rendering on selected plane through world origin.
+- `▼` opens quick settings dropdown for grid parameters.
 
 ### ShowIf attributes
 Add the attribute to any serialized field.
@@ -79,3 +93,4 @@ public int advancedValueByIndex;
   - Added Hierarchy tools: Find Components, Find Missing Scripts (with remove), Find Missing References (table view).
   - Added Prefab Unpack window with multi-asset drag & drop.
   - Improved Missing References UI layout and table formatting.
+  - Added Scene Grid tool with Scene View toggle/dropdown settings.
