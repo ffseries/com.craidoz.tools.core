@@ -2,7 +2,7 @@
 
 Unity package that provides editor utilities and code-assist attributes.
 
-Version: 0.0.4
+Version: 0.0.5
 
 ## Features
 - PlayerPref Management window (`CraidoZ Tools/PlayerPref Management`)
@@ -89,6 +89,9 @@ public int advancedValueByIndex;
 - `ShowIf` with enum names uses the enum label text, so `nameof(MyEnum.Value)` is recommended.
 
 ## Update Log
+- 0.0.5
+  - Improved Scene Grid toolbar behavior and dropdown positioning in Scene View.
+  - Added grid plane selection (XY/XZ/YZ) and color settings for lines/text.
 - 0.0.4
   - Added Hierarchy tools: Find Components, Find Missing Scripts (with remove), Find Missing References (table view).
   - Added Prefab Unpack window with multi-asset drag & drop.
