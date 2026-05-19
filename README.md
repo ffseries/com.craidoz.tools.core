@@ -15,6 +15,7 @@ Version: 0.0.5
   - Unpack To New Prefab (window)
 - Scene Grid tool (`CraidoZ Tools/Scene Grid`)
   - Toggle grid in Scene View (XY/XZ/YZ plane)
+  - Draw grid lines in front of scene objects for consistent visibility
   - Show/Hide Scene View button from CraidoZ menu
   - Configure cell size, range, cell indices, line color, and text color
 - ShowIf attributes (CodeAssist)
@@ -92,6 +93,7 @@ public int advancedValueByIndex;
 - 0.0.5
   - Improved Scene Grid toolbar behavior and dropdown positioning in Scene View.
   - Added grid plane selection (XY/XZ/YZ) and color settings for lines/text.
+  - Updated Scene Grid line rendering to stay visible in front of scene objects.
 - 0.0.4
   - Added Hierarchy tools: Find Components, Find Missing Scripts (with remove), Find Missing References (table view).
   - Added Prefab Unpack window with multi-asset drag & drop.

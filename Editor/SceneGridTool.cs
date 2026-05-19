@@ -144,37 +144,42 @@ namespace Craidoz.Tools.Core.Editor
             var maxB = rangeB * stepB;
 
             var prevZTest = Handles.zTest;
-            Handles.zTest = CompareFunction.LessEqual;
+            Handles.zTest = CompareFunction.Always;
 
-            var lineColor = SceneGridPrefs.LineColor;
-            Handles.color = lineColor;
-            for (var a = -rangeA; a <= rangeA; a++)
+            try
             {
-                var valueA = a * stepA;
-                Handles.DrawLine(PlanePoint(plane, valueA, minB), PlanePoint(plane, valueA, maxB));
-            }
+                var lineColor = SceneGridPrefs.LineColor;
+                Handles.color = lineColor;
+                for (var a = -rangeA; a <= rangeA; a++)
+                {
+                    var valueA = a * stepA;
+                    Handles.DrawLine(PlanePoint(plane, valueA, minB), PlanePoint(plane, valueA, maxB));
+                }
 
-            for (var b = -rangeB; b <= rangeB; b++)
+                for (var b = -rangeB; b <= rangeB; b++)
+                {
+                    var valueB = b * stepB;
+                    Handles.DrawLine(PlanePoint(plane, minA, valueB), PlanePoint(plane, maxA, valueB));
+                }
+
+                var axisColor = new Color(
+                    Mathf.Clamp01(lineColor.r + 0.15f),
+                    Mathf.Clamp01(lineColor.g + 0.15f),
+                    Mathf.Clamp01(lineColor.b + 0.15f),
+                    1f);
+                Handles.color = axisColor;
+                Handles.DrawLine(PlanePoint(plane, minA, 0f), PlanePoint(plane, maxA, 0f));
+                Handles.DrawLine(PlanePoint(plane, 0f, minB), PlanePoint(plane, 0f, maxB));
+
+                if (SceneGridPrefs.ShowCellIndices)
+                {
+                    DrawCellIndices(plane, stepA, stepB, rangeA, rangeB);
+                }
+            }
+            finally
             {
-                var valueB = b * stepB;
-                Handles.DrawLine(PlanePoint(plane, minA, valueB), PlanePoint(plane, maxA, valueB));
+                Handles.zTest = prevZTest;
             }
-
-            var axisColor = new Color(
-                Mathf.Clamp01(lineColor.r + 0.15f),
-                Mathf.Clamp01(lineColor.g + 0.15f),
-                Mathf.Clamp01(lineColor.b + 0.15f),
-                1f);
-            Handles.color = axisColor;
-            Handles.DrawLine(PlanePoint(plane, minA, 0f), PlanePoint(plane, maxA, 0f));
-            Handles.DrawLine(PlanePoint(plane, 0f, minB), PlanePoint(plane, 0f, maxB));
-
-            if (SceneGridPrefs.ShowCellIndices)
-            {
-                DrawCellIndices(plane, stepA, stepB, rangeA, rangeB);
-            }
-
-            Handles.zTest = prevZTest;
         }
 
         private static Vector3 PlanePoint(SceneGridPlane plane, float a, float b)
