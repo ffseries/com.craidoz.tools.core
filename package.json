@@ -1,8 +1,8 @@
 {
   "name": "com.craidoz.tools.core",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "displayName": "CraidoZ Tools - Core",
-  "description": "Shared core utilities for CraidoZ Unity tools.",
+  "description": "CraidoZ Unity editor utilities, Generic animation retargeting, and code-assist attributes.",
   "unity": "2022.3",
   "author": {
     "name": "CraidoZ"
