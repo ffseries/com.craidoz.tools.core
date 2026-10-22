@@ -64,7 +64,7 @@ namespace Craidoz.Tools.Core.Editor
                 source.indices.ContainsKey(m.sourcePath) && target.indices.ContainsKey(m.TargetPath) &&
                 mappings.Count(other => !other.skipped && other.TargetPath == m.TargetPath) == 1 &&
                 (source.bones[source.indices[m.sourcePath]].parent < 0) == (target.bones[target.indices[m.TargetPath]].parent < 0) &&
-                Enum.IsDefined(typeof(RetargetPositionMode), m.positionMode) && Finite(m.positionMultiplier) && m.positionMultiplier >= 0).ToArray();
+                m.ValidMovementSettings).ToArray();
         }
 
         internal static bool Supported(EditorCurveBinding binding)
@@ -80,9 +80,11 @@ namespace Craidoz.Tools.Core.Editor
         }
 
         public static Report Inspect(GameObject sourceModel, GameObject targetModel, AnimationClip clip,
-            RetargetRig source, RetargetRig target, List<RetargetBoneMapping> mappings, bool requireConfirmation, bool partialPreview = false)
+            RetargetRig source, RetargetRig target, List<RetargetBoneMapping> mappings, bool requireConfirmation, bool partialPreview = false,
+            RetargetHierarchyMode hierarchyMode = RetargetHierarchyMode.Strict)
         {
             var report = new Report();
+            if (!Enum.IsDefined(typeof(RetargetHierarchyMode), hierarchyMode)) report.errors.Add("Choose a valid hierarchy mode.");
             if (sourceModel == null || targetModel == null) report.errors.Add("Choose both model assets.");
             if (!string.IsNullOrEmpty(source.error)) report.errors.Add(source.error);
             if (!string.IsNullOrEmpty(target.error)) report.errors.Add(target.error);
@@ -99,10 +101,10 @@ namespace Craidoz.Tools.Core.Editor
             foreach (var m in included)
             {
                 if (!source.indices.ContainsKey(m.sourcePath)) { report.errors.Add("Source path no longer exists: " + m.sourcePath); continue; }
-                string issue = partialPreview ? null : RetargetRig.Issue(m, source, target, mappings);
+                string issue = partialPreview ? null : RetargetRig.Issue(m, source, target, mappings, hierarchyMode);
                 if (issue != null) report.errors.Add(RetargetRig.DisplayPath(m.sourcePath) + ": " + issue);
                 else if (!partialPreview && requireConfirmation && !m.confirmed) report.errors.Add("Confirm pair: " + RetargetRig.DisplayPath(m.sourcePath));
-                if (!Enum.IsDefined(typeof(RetargetPositionMode), m.positionMode) || !Finite(m.positionMultiplier) || m.positionMultiplier < 0)
+                if (!m.ValidMovementSettings)
                     report.errors.Add("Invalid movement settings: " + m.sourcePath);
             }
             if (clip == null) return report;
@@ -152,13 +154,14 @@ namespace Craidoz.Tools.Core.Editor
         }
 
         public RetargetClipBaker(GameObject sourceModel, GameObject targetModel, AnimationClip clip,
-            List<RetargetBoneMapping> mappings, bool partialPreview = false)
+            List<RetargetBoneMapping> mappings, bool partialPreview = false,
+            RetargetHierarchyMode hierarchyMode = RetargetHierarchyMode.Strict)
         {
             originalClip = clip;
             previewOnly = partialPreview;
             var source = RetargetRig.Read(sourceModel);
             var target = RetargetRig.Read(targetModel);
-            var report = Inspect(sourceModel, targetModel, clip, source, target, mappings, false, partialPreview);
+            var report = Inspect(sourceModel, targetModel, clip, source, target, mappings, false, partialPreview, hierarchyMode);
             if (report.errors.Count > 0) throw new InvalidOperationException(string.Join("\n", report.errors));
             try
             {
@@ -232,18 +235,25 @@ namespace Craidoz.Tools.Core.Editor
                 var src = pair.source;
                 var dst = pair.target;
                 var delta = src.transform.localRotation * Quaternion.Inverse(src.rotation);
-                dst.transform.localRotation = (pair.basis * delta * Quaternion.Inverse(pair.basis) * dst.rotation).normalized;
+                // Keep the original quaternion unchanged at 1, including clips with full turns.
+                // Other amounts scale the shortest rotation from the reference pose.
+                if (pair.mapping.rotationMultiplier != 1f)
+                    delta = Quaternion.SlerpUnclamped(Quaternion.identity, delta, pair.mapping.rotationMultiplier);
+                dst.transform.localRotation = (pair.basis * delta * Quaternion.Inverse(pair.basis) * dst.rotation *
+                    Quaternion.Euler(pair.mapping.rotationOffset)).normalized;
                 if (pair.mapping.positionMode != RetargetPositionMode.KeepTargetRestPosition)
                 {
                     float multiplier = pair.mapping.positionMode == RetargetPositionMode.ScaleRestPoseOffset ? pair.mapping.positionMultiplier : 1f;
                     dst.transform.localPosition = dst.position +
                         pair.translationBasis.MultiplyVector(src.transform.localPosition - src.position) * multiplier;
                 }
+                dst.transform.localPosition += pair.mapping.positionOffset;
                 if (pair.mapping.transferScale)
                 {
                     var s = src.transform.localScale;
                     dst.transform.localScale = Vector3.Scale(dst.scale, new Vector3(s.x / src.scale.x, s.y / src.scale.y, s.z / src.scale.z));
                 }
+                dst.transform.localScale = Vector3.Scale(dst.transform.localScale, pair.mapping.scaleMultiplier);
             }
             UpdateSkeleton(SourcePreview, sourcePose, sourceFrame);
             UpdateSkeleton(TargetPreview, targetPose, targetFrame);

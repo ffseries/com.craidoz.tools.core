@@ -2,19 +2,22 @@
 
 Unity package that provides editor utilities and code-assist attributes.
 
-Version: 0.0.7
+Version: 0.0.8
 
 ## Features
 - Animation Retarget (`CraidoZ Tools/Animation/Animation Retarget`)
   - Separate window with rig selection, bone mapping and review steps
   - Clickable skeletons, searchable target picker and path/name suggestions
-  - Manual confirmation, explicit skipping, duplicate-target and parent-chain checks
+  - Manual confirmation, explicit skipping and duplicate-target checks
+  - Strict / Flexible hierarchy modes for matching chains or cross-branch mapping
   - JSON mapping presets tied to source/target model assets
   - In-memory example rigs via **Try example rigs**, without creating assets
   - Generic animation playback, scrubbing and target `.anim` generation
   - Partial mapping preview, independent preview/export looping, and orbit/zoom/pan controls
   - Multiple selection with bulk Skip / Include in the details panel
-  - Mesh-only node filtering, per-pair position/scale controls and export diagnostics
+  - Mesh-only node filtering and export diagnostics
+  - Per-pair position/rotation offsets, movement/rotation amounts and XYZ scale multipliers
+  - Grouped movement settings with Reset and live updates to an active motion preview
 - PlayerPref Management window (`CraidoZ Tools/PlayerPref Management`)
   - Set / load / delete PlayerPrefs
   - Type selection (bool, int, float, string)
@@ -72,7 +75,8 @@ its available Transform tracks; the target plays individually valid pairs withou
 mapped ancestors or confirmation. Missing/duplicate/invalid assignments are omitted.
 Unmapped target joints keep their local reference pose and still follow animated parents.
 The preview reports mapped and not-ready counts. Export still requires complete, valid,
-confirmed included pairs and matching parent chains; a partial preview cannot be baked directly.
+confirmed included pairs; Strict mode also requires matching parent chains. A partial preview
+cannot be baked directly.
 The searchable target picker is also available for dense rigs. Renderer-only transforms are hidden and
 skipped by default; choose **All nodes** or **Meshes only** in the list filter to inspect them. A transform used by
 a SkinnedMeshRenderer (or its bone ancestors) is kept even when it also has a renderer.
@@ -82,12 +86,23 @@ with **Skip selected** / **Include selected**. Target pairing and movement param
 hidden for multiple selections; click one source row to return to editing that pair.
 Bulk actions preserve each row's target and individual movement parameters, even when
 the selected rows have different values. Included pairs must be confirmed again. Skipping a
-parent does not silently skip its children: remaining child mappings are flagged for review.
+parent does not silently skip its children: Strict mode flags remaining child mappings;
+Flexible mode can export those children independently.
 Changing the list filters clears the checked selection so hidden rows are not selected accidentally.
 Changing model assets clears the mapping after an unsaved-change prompt.
 Presets are matched by model asset GUID and hierarchy paths; they require those assets
 to be available in the consuming project. Name suggestions never overwrite existing pairs
 and never mark a pair confirmed. A suggestion is not proof of anatomical equivalence.
+
+**Hierarchy** in Mapping and Review selects **Strict** (the default) or **Flexible**.
+Strict requires each mapped parent to match the target's parent. Flexible permits inserted
+intermediate joints, different chain lengths, and mappings across unrelated branches, such as
+`Body` to `Arm/Extra/Body`. Curves use the chosen target path and its parent's reference axes;
+unmapped target joints receive no curves and keep their local pose while following their parents.
+Flexible does not compensate for different animated parent motion or guarantee matching world
+poses. Preview the result. Both modes still require unique, existing targets, confirmed included
+pairs, and model-root-to-model-root pairing. Skip any source you intentionally omit.
+The hierarchy mode is saved in mapping presets; older presets default to Strict.
 
 **Loop preview** in step 2 repeats playback only in this window. **Loop exported clip**
 in Review sets the new clip's Loop Time flag for Animator playback. These controls are
@@ -95,12 +110,29 @@ independent. Looping does not blend or repair a mismatch between the first and l
 
 Movement settings apply to both preview and export:
 
-- **Keep target rest pose** holds the target bone's local position, preserving its length.
+- **Keep target rest pose** holds clip-driven position at the target reference position.
 - **Transfer movement offset** adds the source's animated displacement from its reference
   position, converted between source and target parent reference coordinate systems.
 - **Scale movement offset** also multiplies that displacement by the chosen multiplier.
+- **Position offset** adds a constant XYZ offset in target parent-local coordinates, even
+  without position keys. To lengthen a neck, adjust the joint that sets the neck-to-head distance.
+- **Rotation amount** scales rotation away from the source reference pose: 0 holds the target
+  reference rotation, 0.5 halves the angle, and 1 preserves the original motion. Values other
+  than 1 use the shortest quaternion angle and may jump when motion crosses 180 degrees;
+  keep 1 for continuous spins. This is not a multiplier on Euler animation channels.
+- **Rotation offset (degrees)** adds a constant tilt about the bone's local axes after
+  retargeted rotation, including when Rotation amount is 0.
 - **Allow scale changes** transfers the source animated/reference scale ratio onto the
-  target reference scale. When disabled, the target reference scale is preserved.
+  target reference scale. When disabled, clip-driven scale is held at the reference scale.
+- **Scale multiplier** then multiplies local XYZ scale independently of Allow scale changes.
+  Each axis must be positive; 1 means unchanged. Scaling affects children and unequal axis
+  values can distort the skinned mesh. The skeleton preview shows joint positions, not mesh deformation.
+
+Position and Rotation offsets default to 0; all multipliers default to 1, including for
+older presets. Expand Position / Rotation / Scale under Movement settings to edit one pair.
+An active motion preview rebuilds at the current time after edits and keeps its playback state.
+**Reset movement settings** resets all three groups for this pair without changing its mapping,
+confirmation or Skip state. Adjustments are stored in presets and baked into the generated clip.
 
 Rotations transfer changes relative to the source reference pose into the target's
 parent reference axes. Reference poses must represent the same stance and facing direction.
@@ -108,8 +140,9 @@ Use offset transfer selectively on moving roots/hips; transferring every bone's 
 can change proportions. Curves from other characters or skipped paths are listed and
 excluded. Clips from another model asset produce a reference-pose warning.
 
-This is a Generic Transform baker for corresponding hierarchies. It does not solve IK,
-foot locking, mismatched chain lengths, Humanoid muscle curves, blendshapes or materials.
+This is a Generic Transform baker. Flexible mode permits different hierarchies, but does not
+solve chain motion or distribute rotations across extra joints. It does not solve IK,
+foot locking, Humanoid muscle curves, blendshapes or materials.
 Non-positive or non-uniform reference scales are rejected explicitly. Target-only bones
 retain their local pose while following their animated parents. Preview uses isolated
 Transform clones; original models, clips and scenes are not changed. Export samples at
@@ -181,6 +214,16 @@ public int advancedValueByIndex;
 - `ShowIf` with enum names uses the enum label text, so `nameof(MyEnum.Value)` is recommended.
 
 ## Update Log
+- 0.0.8 (2026-10-22)
+  - Added Strict / Flexible hierarchy modes in Mapping and Review, saved in mapping presets.
+    Flexible allows inserted joints, different parent chains and cross-branch mappings while
+    unmapped target joints retain their local poses and follow their parents.
+  - Added per-pair position/rotation offsets, rotation amount and XYZ scale multipliers.
+    Preview and exported clips use the same adjustments; older presets retain neutral defaults.
+  - Grouped movement settings into Position / Rotation / Scale with a per-pair Reset button.
+    Editing settings rebuilds an active motion preview at its current time and preserves playback.
+  - Documented clip-driven movement versus manual offsets/multipliers, scale inheritance,
+    and the shortest-angle limitation when changing rotation amount for continuous spins.
 - 0.0.7 (2026-10-22)
   - Added Animation Retarget for Generic rigs, with source/target selection, manual bone mapping,
     exact path/name suggestions, confirmation, and reusable JSON mapping presets.

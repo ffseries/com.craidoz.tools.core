@@ -18,6 +18,27 @@ namespace Craidoz.Tools.Core.Editor
         public RetargetPositionMode positionMode;
         public float positionMultiplier = 1f;
         public bool transferScale;
+        public Vector3 positionOffset;
+        public Vector3 rotationOffset;
+        public float rotationMultiplier = 1f;
+        public Vector3 scaleMultiplier = Vector3.one;
+
+        public bool ValidMovementSettings => Enum.IsDefined(typeof(RetargetPositionMode), positionMode) &&
+            Finite(positionMultiplier) && positionMultiplier >= 0 && Finite(positionOffset) &&
+            Finite(rotationOffset) && Finite(rotationMultiplier) && rotationMultiplier >= 0 &&
+            Finite(scaleMultiplier) && scaleMultiplier.x > 0 && scaleMultiplier.y > 0 && scaleMultiplier.z > 0;
+
+        public void ResetMovementSettings()
+        {
+            positionMode = RetargetPositionMode.KeepTargetRestPosition;
+            positionMultiplier = rotationMultiplier = 1f;
+            transferScale = false;
+            positionOffset = rotationOffset = Vector3.zero;
+            scaleMultiplier = Vector3.one;
+        }
+
+        private static bool Finite(float v) => !float.IsNaN(v) && !float.IsInfinity(v);
+        private static bool Finite(Vector3 v) => Finite(v.x) && Finite(v.y) && Finite(v.z);
     }
 
     internal enum RetargetPositionMode
@@ -27,12 +48,19 @@ namespace Craidoz.Tools.Core.Editor
         ScaleRestPoseOffset
     }
 
+    internal enum RetargetHierarchyMode
+    {
+        Strict,
+        Flexible
+    }
+
     [Serializable]
     internal sealed class RetargetMappingPreset
     {
         public int version = 1;
         public string sourceGuid;
         public string targetGuid;
+        public RetargetHierarchyMode hierarchyMode;
         public List<RetargetBoneMapping> bones = new List<RetargetBoneMapping>();
     }
 
@@ -166,7 +194,7 @@ namespace Craidoz.Tools.Core.Editor
         }
 
         public static string Issue(RetargetBoneMapping mapping, RetargetRig source, RetargetRig target,
-            List<RetargetBoneMapping> mappings)
+            List<RetargetBoneMapping> mappings, RetargetHierarchyMode hierarchyMode = RetargetHierarchyMode.Strict)
         {
             if (mapping.skipped) return null;
             if (mapping.TargetPath == null) return "Choose a target bone, or explicitly skip this source.";
@@ -177,11 +205,13 @@ namespace Craidoz.Tools.Core.Editor
             int targetParent = target.bones[target.indices[mapping.TargetPath]].parent;
             if (sourceParent < 0)
                 return targetParent < 0 ? null : "The model root must map to the target model root.";
+            if (targetParent < 0) return "Only the source model root can map to the target model root.";
+            if (hierarchyMode == RetargetHierarchyMode.Flexible) return null;
             var parentMapping = mappings.FirstOrDefault(m => m.sourcePath == source.bones[sourceParent].path);
             if (parentMapping == null || parentMapping.skipped || parentMapping.TargetPath == null)
-                return "Map the source parent first. Different chain lengths need a separate retargeting strategy.";
+                return "Map the source parent first, or use Flexible hierarchy for different chains.";
             if (targetParent < 0 || target.bones[targetParent].path != parentMapping.TargetPath)
-                return "The mapped parent does not match the target parent. Check this chain.";
+                return "The mapped parent does not match the target parent. Check this chain or use Flexible hierarchy.";
             return null;
         }
     }

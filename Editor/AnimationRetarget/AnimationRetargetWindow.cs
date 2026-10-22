@@ -247,6 +247,13 @@ namespace Craidoz.Tools.Core.Editor
             using (new EditorGUILayout.HorizontalScope())
             {
                 GUILayout.Space(12);
+                DrawHierarchySettings();
+                GUILayout.Space(12);
+            }
+            GUILayout.Space(4);
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                GUILayout.Space(12);
                 GUILayout.Label("Skeleton view", EditorStyles.boldLabel, GUILayout.Width(100));
                 int nextView = GUILayout.Toolbar(view, new[] { "Orbit", "Front", "Side", "Top" }, GUILayout.Width(260));
                 if (nextView != view)
@@ -398,23 +405,7 @@ namespace Craidoz.Tools.Core.Editor
             GUILayout.Space(8);
             advanced = EditorGUILayout.Foldout(advanced, "Movement settings", true);
             if (advanced)
-            {
-                EditorGUILayout.HelpBox("Position uses movement relative to the source reference pose. Scale uses ratios along paired local axes. Rebuild motion preview after changes.", MessageType.None);
-                EditorGUI.BeginChangeCheck();
-                int mode = EditorGUILayout.Popup("Position", (int)m.positionMode,
-                    new[] { "Keep target rest pose", "Transfer movement offset", "Scale movement offset" });
-                float multiplier = m.positionMultiplier;
-                if (mode == 2) multiplier = EditorGUILayout.FloatField("Offset multiplier", multiplier);
-                bool scale = EditorGUILayout.Toggle("Allow scale changes", m.transferScale);
-                if (EditorGUI.EndChangeCheck())
-                {
-                    m.positionMode = (RetargetPositionMode)mode;
-                    m.positionMultiplier = float.IsNaN(multiplier) || float.IsInfinity(multiplier) ? 1f : Mathf.Max(0, multiplier);
-                    m.transferScale = scale;
-                    MarkDirty();
-                }
-                GUILayout.Label("Rotation is converted using both reference poses. No IK or automatic foot locking is applied.", EditorStyles.wordWrappedMiniLabel);
-            }
+                DrawMovementSettings(m);
             EditorGUILayout.EndScrollView();
         }
 
@@ -630,7 +621,7 @@ namespace Craidoz.Tools.Core.Editor
             }
         }
 
-        private string Issue(RetargetBoneMapping mapping) => RetargetRig.Issue(mapping, source, target, mappings);
+        private string Issue(RetargetBoneMapping mapping) => RetargetRig.Issue(mapping, source, target, mappings, hierarchyMode);
         private string TargetName(RetargetBoneMapping m) =>
             m.TargetPath == null ? "Choose bone…" : target.indices.TryGetValue(m.TargetPath, out int index) ?
                 target.bones[index].name : "(Missing target)";
@@ -732,7 +723,8 @@ namespace Craidoz.Tools.Core.Editor
             {
                 var preset = new RetargetMappingPreset {
                     sourceGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(sourceModel)),
-                    targetGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(targetModel)), bones = mappings
+                    targetGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(targetModel)), bones = mappings,
+                    hierarchyMode = hierarchyMode
                 };
                 File.WriteAllText(path, JsonUtility.ToJson(preset, true));
                 dirty = false;
@@ -751,6 +743,8 @@ namespace Craidoz.Tools.Core.Editor
                 var preset = JsonUtility.FromJson<RetargetMappingPreset>(File.ReadAllText(path));
                 if (preset == null || preset.version != 1 || preset.bones == null)
                     throw new InvalidDataException("Unsupported mapping preset.");
+                if (!Enum.IsDefined(typeof(RetargetHierarchyMode), preset.hierarchyMode))
+                    throw new InvalidDataException("Unsupported hierarchy mode in this preset.");
                 string sourceGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(sourceModel));
                 string targetGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(targetModel));
                 if (demo || preset.sourceGuid != sourceGuid || preset.targetGuid != targetGuid)
@@ -760,10 +754,10 @@ namespace Craidoz.Tools.Core.Editor
                     preset.bones.Select(m => m.sourcePath).Distinct().Count() != source.bones.Count)
                     throw new InvalidDataException("The source hierarchy has changed or this preset has invalid rows.");
                 if (preset.bones.Any(m => (m.TargetPath != null && !target.indices.ContainsKey(m.TargetPath)) ||
-                    !Enum.IsDefined(typeof(RetargetPositionMode), m.positionMode) ||
-                    float.IsNaN(m.positionMultiplier) || float.IsInfinity(m.positionMultiplier) || m.positionMultiplier < 0))
+                    !m.ValidMovementSettings))
                     throw new InvalidDataException("The target hierarchy or movement settings are invalid. Check the preset against these rigs.");
                 mappings = source.bones.Select(b => preset.bones.First(m => m.sourcePath == b.path)).ToList();
+                hierarchyMode = preset.hierarchyMode;
                 checkedPaths.Clear();
                 InvalidatePreview();
                 dirty = false;

@@ -11,6 +11,7 @@ namespace Craidoz.Tools.Core.Editor
         [SerializeField] private bool meshClassificationApplied;
         [SerializeField] private bool showMeshNodes;
         [SerializeField] private int sampleRate = 30;
+        [SerializeField] private RetargetHierarchyMode hierarchyMode;
         [SerializeField] private bool loopOutput;
         [SerializeField] private bool loopPreview = true;
         [SerializeField] private bool copyEvents = true;
@@ -24,6 +25,72 @@ namespace Craidoz.Tools.Core.Editor
         private bool showExcluded;
         private int speedIndex = 2;
         private static readonly float[] PreviewSpeeds = { .25f, .5f, 1f, 2f };
+        [SerializeField] private bool showPositionSettings = true;
+        [SerializeField] private bool showRotationSettings;
+        [SerializeField] private bool showScaleSettings;
+
+        private void DrawMovementSettings(RetargetBoneMapping m)
+        {
+            GUILayout.Label("Applies to this pair in preview and export. An active motion preview updates as you edit.", EditorStyles.wordWrappedMiniLabel);
+            float oldLabelWidth = EditorGUIUtility.labelWidth;
+            bool oldWideMode = EditorGUIUtility.wideMode;
+            try
+            {
+                EditorGUIUtility.labelWidth = 115;
+                EditorGUIUtility.wideMode = false;
+                showPositionSettings = EditorGUILayout.Foldout(showPositionSettings, "Position", true);
+                EditorGUI.BeginChangeCheck();
+                if (showPositionSettings)
+                {
+                    m.positionMode = (RetargetPositionMode)EditorGUILayout.Popup("Clip movement", (int)m.positionMode,
+                        new[] { "Keep target rest pose", "Transfer movement offset", "Scale movement offset" });
+                    if (m.positionMode == RetargetPositionMode.ScaleRestPoseOffset)
+                        m.positionMultiplier = SafeMovementValue(EditorGUILayout.FloatField(new GUIContent("Movement amount", "Scales position changes from the source reference pose. Does not change bone length."), m.positionMultiplier), 1f, 0f);
+                    m.positionOffset = SafeMovementVector(EditorGUILayout.Vector3Field(new GUIContent("Position offset", "Added in target parent-local coordinates, including when clip movement is held at rest."), m.positionOffset), 0f);
+                    GUILayout.Label("Offset shifts the joint throughout the clip, even without position keys.", EditorStyles.wordWrappedMiniLabel);
+                }
+                bool changed = EditorGUI.EndChangeCheck();
+                showRotationSettings = EditorGUILayout.Foldout(showRotationSettings, "Rotation", true);
+                EditorGUI.BeginChangeCheck();
+                if (showRotationSettings)
+                {
+                    m.rotationMultiplier = SafeMovementValue(EditorGUILayout.FloatField(new GUIContent("Rotation amount", "0 = no clip rotation, 1 = original motion, 2 = double. Scales the shortest angle from the reference pose; continuous spins can jump at 180 degrees when amount is not 1."), m.rotationMultiplier), 1f, 0f);
+                    m.rotationOffset = SafeMovementVector(EditorGUILayout.Vector3Field(new GUIContent("Rotation offset (degrees)", "An extra local-axis rotation applied after retargeted rotation."), m.rotationOffset), 0f);
+                    GUILayout.Label("Amount scales motion; offset adds a constant tilt. For continuous spins, keep amount at 1.", EditorStyles.wordWrappedMiniLabel);
+                }
+                changed |= EditorGUI.EndChangeCheck();
+                showScaleSettings = EditorGUILayout.Foldout(showScaleSettings, "Scale", true);
+                EditorGUI.BeginChangeCheck();
+                if (showScaleSettings)
+                {
+                    m.transferScale = EditorGUILayout.Toggle(new GUIContent("Allow scale changes", "Transfers animated scale ratios from the source clip."), m.transferScale);
+                    m.scaleMultiplier = SafeMovementVector(EditorGUILayout.Vector3Field(new GUIContent("Scale multiplier", "Multiplies target local scale independently of Allow scale changes. 1 = unchanged. All axes must be positive."), m.scaleMultiplier), 1f, .0001f);
+                    GUILayout.Label("Also affects children. Different axis values can distort the mesh.", EditorStyles.wordWrappedMiniLabel);
+                }
+                changed |= EditorGUI.EndChangeCheck();
+                GUILayout.Space(4);
+                if (GUILayout.Button(new GUIContent("Reset movement settings", "Resets Position, Rotation and Scale for this pair. Keeps its mapping, confirmation and Skip state.")))
+                {
+                    m.ResetMovementSettings();
+                    changed = true;
+                }
+                if (changed) MovementSettingsChanged();
+            }
+            finally { EditorGUIUtility.labelWidth = oldLabelWidth; EditorGUIUtility.wideMode = oldWideMode; }
+        }
+
+        private static float SafeMovementValue(float value, float fallback, float minimum) =>
+            float.IsNaN(value) || float.IsInfinity(value) ? fallback : Mathf.Max(minimum, value);
+        private static Vector3 SafeMovementVector(Vector3 value, float fallback, float minimum = float.MinValue) =>
+            new Vector3(SafeMovementValue(value.x, fallback, minimum), SafeMovementValue(value.y, fallback, minimum), SafeMovementValue(value.z, fallback, minimum));
+
+        private void MovementSettingsChanged()
+        {
+            bool rebuild = motionPreview != null;
+            bool resume = previewPlaying;
+            MarkDirty();
+            if (rebuild && BuildMotionPreview()) previewPlaying = resume;
+        }
 
         private void OnRetargetProjectChanged() { Rebuild(false); Repaint(); }
 
@@ -41,13 +108,13 @@ namespace Craidoz.Tools.Core.Editor
             get
             {
                 if (clipReport == null)
-                    clipReport = RetargetClipBaker.Inspect(sourceModel, targetModel, sourceClip, source, target, mappings, false);
+                    clipReport = RetargetClipBaker.Inspect(sourceModel, targetModel, sourceClip, source, target, mappings, false, hierarchyMode: hierarchyMode);
                 return clipReport;
             }
         }
 
         private RetargetClipBaker.Report PreviewReport => previewReport ?? (previewReport =
-            RetargetClipBaker.Inspect(sourceModel, targetModel, sourceClip, source, target, mappings, false, true));
+            RetargetClipBaker.Inspect(sourceModel, targetModel, sourceClip, source, target, mappings, false, true, hierarchyMode));
 
         private void DrawSourceClipField()
         {
@@ -71,7 +138,7 @@ namespace Craidoz.Tools.Core.Editor
             try
             {
                 if (demo) throw new InvalidOperationException("Exit demo and choose actual model assets and a clip.");
-                motionPreview = new RetargetClipBaker(sourceModel, targetModel, sourceClip, mappings, true);
+                motionPreview = new RetargetClipBaker(sourceModel, targetModel, sourceClip, mappings, true, hierarchyMode);
                 previewTime = Mathf.Clamp(previewTime, 0, motionPreview.Length);
                 motionPreview.Sample(previewTime);
                 lastPreviewUpdate = EditorApplication.timeSinceStartup;
@@ -164,13 +231,35 @@ namespace Craidoz.Tools.Core.Editor
                     if (extras.Length > 0 && EditorUtility.DisplayDialog("Skip unmapped transforms?",
                         "These source transforms will not be exported:\n\n" +
                         string.Join("\n", extras.Select(m => m.sourcePath)) +
-                        "\n\nTheir animation will be omitted. A mapped child still requires its parent.", "Skip listed transforms", "Cancel"))
+                        "\n\nTheir animation will be omitted. " + (hierarchyMode == RetargetHierarchyMode.Strict
+                            ? "In Strict mode, a mapped child still requires its parent."
+                            : "In Flexible mode, mapped children can animate independently."), "Skip listed transforms", "Cancel"))
                     {
                         foreach (var m in extras) { m.skipped = true; m.confirmed = false; }
                         MarkDirty();
                     }
                 }
             }
+        }
+
+        private void DrawHierarchySettings()
+        {
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                GUILayout.Label(new GUIContent("Hierarchy", "Strict requires matching mapped parents. Flexible allows different parent chains. Model roots must still map to model roots."), GUILayout.Width(70));
+                var next = (RetargetHierarchyMode)EditorGUILayout.EnumPopup(hierarchyMode, GUILayout.Width(100));
+                if (next != hierarchyMode) SetHierarchyMode(next);
+                GUILayout.Label(hierarchyMode == RetargetHierarchyMode.Flexible
+                    ? "Different chains allowed. Unmapped target joints keep local rest pose. Check preview."
+                    : "Mapped parent chains must match.", EditorStyles.wordWrappedMiniLabel);
+            }
+        }
+
+        private void SetHierarchyMode(RetargetHierarchyMode mode)
+        {
+            if (mode == hierarchyMode) return;
+            hierarchyMode = mode;
+            MarkDirty();
         }
 
         private void DrawGenerationPanel()
@@ -231,13 +320,13 @@ namespace Craidoz.Tools.Core.Editor
             // Re-read assets to avoid exporting against a stale mapping snapshot.
             var freshSource = RetargetRig.Read(sourceModel);
             var freshTarget = RetargetRig.Read(targetModel);
-            var report = RetargetClipBaker.Inspect(sourceModel, targetModel, sourceClip, freshSource, freshTarget, mappings, true);
+            var report = RetargetClipBaker.Inspect(sourceModel, targetModel, sourceClip, freshSource, freshTarget, mappings, true, hierarchyMode: hierarchyMode);
             if (report.errors.Count > 0) throw new InvalidOperationException(string.Join("\n", report.errors));
             previewPlaying = false;
             AnimationClip output = null;
             try
             {
-                using (var baker = new RetargetClipBaker(sourceModel, targetModel, sourceClip, mappings))
+                using (var baker = new RetargetClipBaker(sourceModel, targetModel, sourceClip, mappings, hierarchyMode: hierarchyMode))
                     output = baker.Bake(sampleRate, loopOutput, copyEvents, progress =>
                         EditorUtility.DisplayCancelableProgressBar("Retarget animation", "Sampling and converting paired bones…", progress));
                 string unique = AssetDatabase.GenerateUniqueAssetPath(path);

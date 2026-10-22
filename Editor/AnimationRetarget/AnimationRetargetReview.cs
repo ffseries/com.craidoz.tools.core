@@ -97,7 +97,7 @@ namespace Craidoz.Tools.Core.Editor
             MarkDirty();
             int issues = mappings.Count(m => !m.skipped && Issue(m) != null);
             Notify(changed + (skip ? " transforms skipped." : " transforms included. Review and confirm their pairs.") +
-                (issues > 0 ? " " + issues + " pairs need attention; check their parent mappings." : ""),
+                (issues > 0 ? " " + issues + " pairs need attention; inspect the flagged rows." : ""),
                 issues > 0 ? MessageType.Warning : MessageType.Info);
         }
 
@@ -121,6 +121,7 @@ namespace Craidoz.Tools.Core.Editor
             int skipped = mappings.Count(m => m.skipped);
             int remaining = mappings.Count - confirmed - skipped;
             GUILayout.Label("Review & export", titleStyle);
+            DrawHierarchySettings();
             GUILayout.Space(8);
             using (new EditorGUILayout.HorizontalScope())
             {
